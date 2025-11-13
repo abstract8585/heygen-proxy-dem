@@ -9,40 +9,38 @@ app.use(cors());
 app.use(express.json());
 
 const API_KEY = process.env.HEYGEN_API_KEY;
-const BASE_URL = "https://api.heygen.com/v2"; // Using V2 endpoints
+const BASE_URL = "https://api.heygen.com/v2";
 
 // Health check
 app.get("/api/health", (req, res) => {
   res.json({ status: "ok" });
 });
 
-// Get avatars
+// List avatars
 app.get("/api/avatars", async (req, res) => {
   try {
     const response = await fetch(`${BASE_URL}/avatars`, {
       headers: { Authorization: `Bearer ${API_KEY}` },
     });
-    if (!response.ok) throw new Error(`HeyGen API error: ${response.status}`);
     const data = await response.json();
-    res.json({ error: null, data });
+    res.json({ error: null, data: data.avatars || [] });
   } catch (err) {
-    console.error("❌ Failed to fetch avatars:", err);
-    res.json({ error: "Failed to fetch avatars", data: null });
+    console.error("❌ Failed to fetch avatars", err);
+    res.json({ error: "Failed to fetch avatars", data: [] });
   }
 });
 
-// Get voices
+// List voices
 app.get("/api/voices", async (req, res) => {
   try {
     const response = await fetch(`${BASE_URL}/voices`, {
       headers: { Authorization: `Bearer ${API_KEY}` },
     });
-    if (!response.ok) throw new Error(`HeyGen API error: ${response.status}`);
     const data = await response.json();
-    res.json({ error: null, data });
+    res.json({ error: null, data: data.voices || [] });
   } catch (err) {
-    console.error("❌ Failed to fetch voices:", err);
-    res.json({ error: "Failed to fetch voices", data: null });
+    console.error("❌ Failed to fetch voices", err);
+    res.json({ error: "Failed to fetch voices", data: [] });
   }
 });
 
@@ -50,10 +48,6 @@ app.get("/api/voices", async (req, res) => {
 app.post("/api/videos", async (req, res) => {
   try {
     const { avatar_id, voice_id, text } = req.body;
-    if (!avatar_id || !voice_id || !text) {
-      return res.status(400).json({ error: "Missing avatar_id, voice_id, or text" });
-    }
-
     const response = await fetch(`${BASE_URL}/videos`, {
       method: "POST",
       headers: {
@@ -70,44 +64,27 @@ app.post("/api/videos", async (req, res) => {
         ],
       }),
     });
-
-    if (!response.ok) {
-      const textErr = await response.text();
-      throw new Error(`HeyGen API error: ${response.status} - ${textErr}`);
-    }
-
     const data = await response.json();
     res.json(data);
   } catch (err) {
     console.error("❌ Error creating video:", err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: "Failed to create video" });
   }
 });
 
 // Get video status
 app.get("/api/videos/:id", async (req, res) => {
   try {
-    const videoId = req.params.id;
-    if (!videoId) return res.status(400).json({ error: "Missing video ID" });
-
-    const response = await fetch(`${BASE_URL}/videos/${videoId}`, {
+    const response = await fetch(`${BASE_URL}/videos/${req.params.id}`, {
       headers: { Authorization: `Bearer ${API_KEY}` },
     });
-
-    if (!response.ok) {
-      const textErr = await response.text();
-      throw new Error(`HeyGen API error: ${response.status} - ${textErr}`);
-    }
-
     const data = await response.json();
     res.json(data);
   } catch (err) {
     console.error("❌ Error fetching video status:", err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: "Failed to fetch video status" });
   }
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`HeyGen proxy server running on port ${PORT}`);
-});
+app.listen(PORT, () => console.log(`Proxy server running on port ${PORT}`));

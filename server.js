@@ -9,7 +9,10 @@ app.use(cors());
 app.use(express.json());
 
 const API_KEY = process.env.HEYGEN_API_KEY;
-const BASE_URL = "https://api.heygen.com/v1";
+const BASE_URL = "https://api.heygen.com/v2";
+console.log("🚀 Server started. Using API:", BASE_URL);
+console.log("🔑 HEYGEN_API_KEY prefix:", API_KEY?.slice(0,10) || "MISSING");
+
 
 // 🩺 Health check
 app.get("/api/health", (req, res) => {

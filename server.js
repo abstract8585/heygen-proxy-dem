@@ -5,72 +5,101 @@ import cors from "cors";
 import "dotenv/config";
 
 const app = express();
-app.use(cors());
+
+// CORS - allow your front-end domain
+app.use(cors({
+  origin: ["https://waodeo.com", "https://www.waodeo.com"],
+  methods: ["GET", "POST"],
+  allowedHeaders: ["Content-Type", "Authorization"]
+}));
+
 app.use(express.json());
 
 const API_KEY = process.env.HEYGEN_API_KEY;
 const BASE_URL = "https://api.heygen.com/v2"; // V2 API
 
-// Health-check route
-app.get("/api/health", (req, res) => res.json({ status: "ok" }));
+// Health check
+app.get("/api/health", (req, res) => {
+  res.json({ status: "ok" });
+});
 
-// List avatars
+// Get list of avatars
 app.get("/api/avatars", async (req, res) => {
   try {
     const response = await fetch(`${BASE_URL}/avatars`, {
-      headers: { Authorization: `Bearer ${API_KEY}` }
+      headers: { "Authorization": `Bearer ${API_KEY}` }
     });
-    const data = await response.json();
-    console.log("Avatars API raw response:", data);
 
-    res.json({ error: null, data: { avatars: data.avatars || [] } });
+    const text = await response.text();
+    try {
+      const data = JSON.parse(text);
+      res.json({ error: null, data });
+    } catch (err) {
+      console.error("Failed to parse avatars JSON:", text);
+      res.status(500).json({ error: "Failed to fetch avatars", raw: text });
+    }
   } catch (err) {
-    console.error("❌ Failed to fetch avatars:", err);
-    res.json({ error: "Failed to fetch avatars", data: { avatars: [] } });
+    console.error("Error fetching avatars:", err);
+    res.status(500).json({ error: "Error fetching avatars" });
   }
 });
 
-// List voices
+// Get list of voices
 app.get("/api/voices", async (req, res) => {
   try {
     const response = await fetch(`${BASE_URL}/voices`, {
-      headers: { Authorization: `Bearer ${API_KEY}` }
+      headers: { "Authorization": `Bearer ${API_KEY}` }
     });
-    const data = await response.json();
-    console.log("Voices API raw response:", data);
 
-    res.json({ error: null, data: { voices: data.voices || [] } });
+    const text = await response.text();
+    try {
+      const data = JSON.parse(text);
+      res.json({ error: null, data });
+    } catch (err) {
+      console.error("Failed to parse voices JSON:", text);
+      res.status(500).json({ error: "Failed to fetch voices", raw: text });
+    }
   } catch (err) {
-    console.error("❌ Failed to fetch voices:", err);
-    res.json({ error: "Failed to fetch voices", data: { voices: [] } });
+    console.error("Error fetching voices:", err);
+    res.status(500).json({ error: "Error fetching voices" });
   }
 });
 
-// Create video
+// Create a video
 app.post("/api/videos", async (req, res) => {
   try {
-    const body = {
-      avatar_id: req.body.avatar_id,
-      voice_id: req.body.voice_id,
-      text: req.body.text
-    };
+    console.log("➡️ Creating video with payload:", req.body);
 
     const response = await fetch(`${BASE_URL}/videos`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${API_KEY}`
+        "Authorization": `Bearer ${API_KEY}`
       },
-      body: JSON.stringify(body)
+      body: JSON.stringify({
+        avatar_id: req.body.avatar_id,
+        voice_id: req.body.voice_id,
+        text: req.body.text
+      })
     });
 
-    const data = await response.json();
-    console.log("Video creation response:", data);
-
-    res.json(data);
+    const text = await response.text();
+    try {
+      const data = JSON.parse(text);
+      if (data.error) {
+        console.error("❌ Failed to create video:", data.error);
+        res.status(500).json({ error: "Failed to create video", raw: data.error });
+        return;
+      }
+      console.log("📦 Creation response:", data);
+      res.json(data);
+    } catch (err) {
+      console.error("❌ Failed to parse JSON response:", text);
+      res.status(500).json({ error: "Failed to parse JSON", raw: text });
+    }
   } catch (err) {
-    console.error("❌ Failed to create video:", err);
-    res.status(500).json({ error: "Failed to create video" });
+    console.error("❌ Error creating video:", err);
+    res.status(500).json({ error: "Server error", details: err.message });
   }
 });
 
@@ -78,15 +107,23 @@ app.post("/api/videos", async (req, res) => {
 app.get("/api/videos/:id", async (req, res) => {
   try {
     const response = await fetch(`${BASE_URL}/videos/${req.params.id}`, {
-      headers: { Authorization: `Bearer ${API_KEY}` }
+      headers: { "Authorization": `Bearer ${API_KEY}` }
     });
-    const data = await response.json();
-    res.json(data);
+
+    const text = await response.text();
+    try {
+      const data = JSON.parse(text);
+      res.json(data);
+    } catch (err) {
+      console.error("❌ Failed to parse JSON:", text);
+      res.status(500).json({ error: "Failed to parse JSON", raw: text });
+    }
   } catch (err) {
-    console.error("❌ Failed to fetch video status:", err);
-    res.status(500).json({ error: "Failed to fetch video status" });
+    console.error("Error checking video:", err);
+    res.status(500).json({ error: "Error checking video" });
   }
 });
 
+// Listen on the port Render provides
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Node.js HeyGen proxy running on port ${PORT}`));
+app.listen(PORT, () => console.log(`Node.js proxy running on port ${PORT}`));

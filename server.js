@@ -1,100 +1,91 @@
-import 'dotenv/config';
+// server.js
 import express from "express";
 import fetch from "node-fetch";
 import cors from "cors";
+import "dotenv/config";
 
 const app = express();
-
-app.use(cors({
-  origin: ["*"], // allow all origins for demo
-  methods: ["GET", "POST"],
-  allowedHeaders: ["Content-Type", "Authorization"]
-}));
-
+app.use(cors());
 app.use(express.json());
 
-// Root route (Render health check)
-app.get("/", (req, res) => {
-  res.send("HeyGen proxy server is running 🚀");
-});
+const API_KEY = process.env.HEYGEN_API_KEY;
+const BASE_URL = "https://api.heygen.com/v1";
 
-// Health check
+// 🩺 Health check
 app.get("/api/health", (req, res) => {
   res.json({ status: "ok" });
 });
 
-const HEYGEN_API = "https://api.heygen.com/v1";
-const API_KEY = process.env.HEYGEN_API_KEY;
-
-// List avatars
+// 🧍 Get all avatars
 app.get("/api/avatars", async (req, res) => {
   try {
-    const response = await fetch(`${HEYGEN_API}/avatars`, {
-      headers: { Authorization: `Bearer ${API_KEY}` }
+    const response = await fetch(`${BASE_URL}/avatars`, {
+      headers: { Authorization: `Bearer ${API_KEY}` },
     });
     const data = await response.json();
     res.json(data);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("Error fetching avatars:", err);
+    res.status(500).json({ error: "Failed to fetch avatars" });
   }
 });
 
-// List voices
+// 🗣️ Get all voices
 app.get("/api/voices", async (req, res) => {
   try {
-    const response = await fetch(`${HEYGEN_API}/voices`, {
-      headers: { Authorization: `Bearer ${API_KEY}` }
+    const response = await fetch(`${BASE_URL}/voices`, {
+      headers: { Authorization: `Bearer ${API_KEY}` },
     });
     const data = await response.json();
     res.json(data);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("Error fetching voices:", err);
+    res.status(500).json({ error: "Failed to fetch voices" });
   }
 });
 
-// Create video
-app.post("/api/videos", async (req, res) => {
+// 🎬 Generate video
+app.post("/api/generate", async (req, res) => {
   try {
-    const { avatar_id, voice_id, text } = req.body;
+    const { avatar_id, voice_id, script } = req.body;
 
-    const response = await fetch(`${HEYGEN_API}/videos`, {
+    const response = await fetch(`${BASE_URL}/video/generate`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${API_KEY}`
+        Authorization: `Bearer ${API_KEY}`,
       },
       body: JSON.stringify({
-        video_inputs: [
-          { character: avatar_id, voice: voice_id, text }
-        ]
-      })
+        avatar_id,
+        voice_id,
+        script,
+        test: false,
+      }),
     });
 
     const data = await response.json();
-
-    const videoId = data.data?.video_id;
-    if (!videoId) return res.status(500).json({ error: "Failed to retrieve video ID" });
-
-    res.json({ video_id: videoId });
-
+    res.json(data);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("Error generating video:", err);
+    res.status(500).json({ error: "Failed to generate video" });
   }
 });
 
-// Get video status
-app.get("/api/videos/:id", async (req, res) => {
+// 🔁 Check video status
+app.get("/api/status/:video_id", async (req, res) => {
   try {
-    const response = await fetch(`${HEYGEN_API}/videos/${req.params.id}`, {
-      headers: { Authorization: `Bearer ${API_KEY}` }
+    const { video_id } = req.params;
+    const response = await fetch(`${BASE_URL}/video/status?video_id=${video_id}`, {
+      headers: { Authorization: `Bearer ${API_KEY}` },
     });
     const data = await response.json();
     res.json(data);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("Error fetching video status:", err);
+    res.status(500).json({ error: "Failed to fetch video status" });
   }
 });
 
-// Start server
+// 🌐 Start server
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`HeyGen proxy running on port ${PORT}`));
+app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
